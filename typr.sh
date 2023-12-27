@@ -44,18 +44,24 @@ typr_draw_text () {
     e="$entered_text"
     lt=""
     while [ "$t" ] ; do
-        lt=$ct
-        ct=${t%${t#?}}
-        ce=${e%${e#?}}
+        lt="$ct"
+        ct="${t%${t#?}}"
         t="${t#?}"
+
+        ce="${e%${e#?}}"
         e="${e#?}"
 
-
-        [ "$ct" != "$ce" ] \
-            && newcolor="[0;31m" \
-            || newcolor="[0;32m"
-
-        [ ! "$ce" ] && newcolor="[0;37m" \
+        case "$ce" in
+            "$ct")
+                newcolor="[0;32m"
+                ;;
+            "")
+                newcolor="[0;37m"
+                ;;
+            *)
+                newcolor="[0;31m"
+            ;;
+        esac
 
         [ "$lt" = " " ] && {
             next_word=${t%% *}
@@ -73,10 +79,10 @@ typr_draw_text () {
         }
 
 
-        [ "$color" = "[0;31m" ] &&{
+        [ "$color" = "[0;31m" ] && {
             [ "$ce" = " " ] && draw="${draw}_" || draw="${draw}$ce"
         } || {
-         draw="$draw$ct"
+            draw="$draw$ct"
         }
 
         i=$((i+1))
@@ -171,9 +177,17 @@ typr_main () {
     correct_kp=0
     export correct_kp total_kp
 
+    fstart=$(date +%s%N)
     while true; do
         typr_draw_text
+
+        # calculate performance
+        fend=$(date +%s%N)
+        msperframe=$(((fend-fstart)/1000000))
+        printf "[0;0H%6s" "$msperframe"
+
         c="$(tty_readc)"
+        fstart=$(date +%s%N)
         case "$c" in
             ''|'') break;;
             '')
