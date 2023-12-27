@@ -114,18 +114,8 @@ typr_show_results () {
 }
 
 typr_generate_text () {
-    words="$(printf "%s " $words | shuf)"
     wordcount=100
-
-    set -- $words
-    text=""
-
-    i=0
-    while [ "$i" -lt "$wordcount" ]; do
-        text="$1 $text"
-        shift
-        i=$((i+1))
-    done
+    text="$(printf "%s\n" $words | shuf -r -n $wordcount | xargs printf "%s ")"
     text="${text% }"
 }
 
