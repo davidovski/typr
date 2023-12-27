@@ -177,17 +177,17 @@ typr_main () {
     correct_kp=0
     export correct_kp total_kp
 
-    fstart=$(date +%s%N)
+    #fstart=$(date +%s%N)
     while true; do
         typr_draw_text
 
         # calculate performance
-        fend=$(date +%s%N)
-        msperframe=$(((fend-fstart)/1000000))
-        printf "[0;0H%6s" "$msperframe"
+        #fend=$(date +%s%N)
+        #msperframe=$(((fend-fstart)/1000000))
+        #printf "[0;0H%6s" "$msperframe"
 
         c="$(tty_readc)"
-        fstart=$(date +%s%N)
+        #fstart=$(date +%s%N)
         case "$c" in
             ''|'') break;;
             '')
