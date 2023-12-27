@@ -107,7 +107,7 @@ typr_show_results () {
 
     words="$(set -- $text ; printf "%s" "$#")"
     wpm="$((time_ns*words/60000000000))"
-    acc="100%"
+    acc="$(typr_calculate_acc)"
 
     printf "[%s;${areax}H%s" \
         "${areay}" "[0;37mwpm" \
@@ -115,7 +115,9 @@ typr_show_results () {
         "$((areay+2))" "[0;37macc" \
         "$((areay+3))" "[0m$acc" \
         "$((areay+4))" "[0;37mtime" \
-        "$((areay+5))" "[0m$(typr_get_time)"
+        "$((areay+5))" "[0m$(typr_get_time)" \
+        "$((areay+6))" "[0;37mwords" \
+        "$((areay+7))" "[0m$words"
 }
 
 typr_generate_text () {
@@ -138,7 +140,30 @@ typr_start_timer () {
     export start draw_pid
 }
 
+typr_calculate_acc () {
+    [ "$total_kp" != "0" ] && printf "%s%%" "$(((100*correct_kp)/total_kp))" || printf "0%"
+}
+
+typr_update_acc () {
+    c=$1
+    total_kp=$((total_kp+1))
+
+    i=0
+    t="$text"
+    while [ "$i" -lt "$((${#entered_text}-1))" ]; do
+        i=$((i+1))
+        t="${t#?}" # remove first letter
+    done
+    correct_c=${t%${t#?}}
+
+    [ "$c" == "$correct_c" ] && correct_kp=$((correct_kp+1))
+    export correct_kp total_kp
+}
+
 typr_main () {
+    total_kp=0
+    correct_kp=0
+    export correct_kp total_kp
 
     while true; do
         typr_draw_text
@@ -152,6 +177,7 @@ typr_main () {
                 [ -z "$start" ] && typr_start_timer
 
                 entered_text="$entered_text$c"
+                typr_update_acc "$c"
                 ;;
         esac
 
