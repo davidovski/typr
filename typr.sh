@@ -1,6 +1,7 @@
 #!/bin/sh
 
-words="the be of and a to in he have it that for they I with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line"
+words="the be of and a to in he have it that for they i with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line"
+
 entered_text=""
 text=""
 
@@ -15,7 +16,9 @@ tty_init () {
 
 tty_cleanup () {
     tput clear
+    tput cnorm
     stty $SAVED_TTY_SETTINGS
+
 }
 
 tty_readc () {
@@ -91,18 +94,17 @@ typr_draw_time () {
 }
 
 typr_show_results () {
+    tput clear
+    tput civis
+
     now="$(date +%s%N)"
     time_ns=$((now-start))
 
-    time_ms=$(((time_ns/1000000)%1000))
-    time_seconds=$(((time_ns/1000000000)%60))
-    time_minutes=$((time_ns/60000000000))
-
-    words=$(set -- $text; printf "%s\n" "$#")
+    words="$(set -- $text ; printf "%s" "$#")"
     wpm="$((time_ns*words/60000000000))"
+    acc="100%"
     
-    printf "[$((areay-1));${areax}H[0mtime: %02d:%02d.%03d\twpm: %s" "$time_minutes" "$time_seconds" "$time_ms" "$wpm"
-    
+    printf "[%s;${areax}H%s" "${areay}" "[0;37mwpm" "$((areay+1))" "[0m$wpm" "$((areay+2))" "[0;37macc" "$((areay+3))" 
 }
 
 typr_generate_text () {
@@ -139,7 +141,7 @@ typr_main () {
         typr_draw_text
         c="$(tty_readc)"
         case "$c" in
-            ''|'') break;;
+            ''|'') break;;
             '')
                 entered_text="${entered_text%?}"
                 ;;
@@ -152,6 +154,8 @@ typr_main () {
         [ "${#entered_text}" = "${#text}" ] && break
     done
     kill "$draw_pid"
+
+    typr_show_results
 
     while true; do
         case "$(tty_readc)" in
