@@ -159,7 +159,7 @@ typr_update_acc () {
     done
     correct_c=${t%${t#?}}
 
-    [ "$c" == "$correct_c" ] && correct_kp=$((correct_kp+1))
+    [ "$c" = "$correct_c" ] && correct_kp=$((correct_kp+1))
     export correct_kp total_kp
 }
 
