@@ -6,7 +6,7 @@ entered_text=""
 text=""
 
 tty_init () {
-    tput clear
+    printf "[2J"
     export SAVED_TTY_SETTINGS=$(stty -g)
     stty raw -echo
     trap typr_cleanup 1 2 3 6
@@ -15,10 +15,8 @@ tty_init () {
 }
 
 tty_cleanup () {
-    tput clear
-    tput cnorm
     stty $SAVED_TTY_SETTINGS
-
+    printf "[2J[0;0H[?25h"
 }
 
 tty_readc () {
@@ -87,8 +85,7 @@ typr_draw_text () {
 
         i=$((i+1))
     done
-    printf "%s[${cpos}H" "$draw"
-    tput cnorm
+    printf "%s[${cpos}H[?25h" "$draw"
 }
 
 typr_get_time () {
@@ -111,8 +108,7 @@ typr_calculate_wpm () {
 }
 
 typr_show_results () {
-    tput clear
-    tput civis
+    printf "[2J[?25l"
 
     now="$(date +%s%N)"
     time_ns=$((now-start))
@@ -215,8 +211,9 @@ typr_main () {
 }
 
 typr_init () {
-    cols="$(tput cols)"
-    lines="$(tput lines)"
+    set -- $(stty size)
+    cols="$2"
+    lines="$1"
 
     areax=$((cols / 3))
     areay=$((lines / 3))
