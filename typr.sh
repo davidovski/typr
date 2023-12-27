@@ -106,7 +106,7 @@ typr_show_results () {
     time_ns=$((now-start))
 
     words="$(set -- $text ; printf "%s" "$#")"
-    wpm="$((time_ns*words/60000000000))"
+    wpm="$((words*60000000000/time_ns))"
     acc="$(typr_calculate_acc)"
 
     printf "[%s;${areax}H%s" \
@@ -189,7 +189,7 @@ typr_main () {
 
     while true; do
         case "$(tty_readc)" in
-            ''|'') break;;
+            ''|'') break;;
         esac
     done
 }
