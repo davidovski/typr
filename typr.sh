@@ -141,7 +141,7 @@ typr_start_timer () {
 }
 
 typr_calculate_acc () {
-    [ "$total_kp" != "0" ] && printf "%s%%" "$(((100*correct_kp)/total_kp))" || printf "0%"
+    [ "$total_kp" != "0" ] && printf "%s%%" "$(((100*correct_kp)/total_kp))" || printf "%s" "0%"
 }
 
 typr_update_acc () {
