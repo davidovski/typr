@@ -42,7 +42,9 @@ typr_draw_text () {
     i=0
     t="$text"
     e="$entered_text"
+    lt=""
     while [ "$t" ] ; do
+        lt=$ct
         ct=${t%${t#?}}
         ce=${e%${e#?}}
         t="${t#?}"
@@ -55,18 +57,18 @@ typr_draw_text () {
 
         [ ! "$ce" ] && newcolor="[0;37m" \
 
+        [ "$i" -gt "$startcol" ] && [ "$lt" = " " ] && {
+            line=$((line+1))
+            draw="${draw}[${line};${startcol}H"
+            i=0
+        }
+
         [ "$color" != "$newcolor" ] && {
             color="$newcolor"
             draw="${draw}$newcolor"
             [ "$color" = "[0;37m" ] && cpos="${line};$((i+$startcol))"
         }
 
-
-        [ "$i" -gt "$startcol" ] && {
-            line=$((line+1))
-            draw="${draw}[${line};${startcol}H"
-            i=0
-        }
 
         [ "$ct" = " " ] && [ "$color" = "[0;31m" ] \
          && draw="${draw}_" \
@@ -85,12 +87,12 @@ typr_get_time () {
     time_ms=$(((time_ns/1000000)%1000))
     time_seconds=$(((time_ns/1000000000)%60))
     time_minutes=$((time_ns/60000000000))
-    
+
     printf "%02d:%02d.%03d" "$time_minutes" "$time_seconds" "$time_ms"
 }
 
 typr_draw_time () {
-    printf "[s[$((areay-1));${areax}H[0m%s[u" "$(typr_get_time)"
+    [ ! -z "$start" ] && printf "[s[$((areay-1));${areax}H[0m%s[u" "$(typr_get_time)"
 }
 
 typr_show_results () {
@@ -115,7 +117,7 @@ typr_show_results () {
 
 typr_generate_text () {
     wordcount=100
-    text="$(printf "%s\n" $words | shuf -r -n $wordcount | xargs printf "%s ")"
+    text="$(printf "%s " $(printf "%s\n" $words | shuf -r -n $wordcount))"
     text="${text% }"
 }
 
@@ -126,12 +128,14 @@ typr_draw_loop () {
     done
 }
 
-
-typr_main () {
+typr_start_timer () {
     start="$(date +%s%N)"
-
     typr_draw_loop &
     draw_pid="$!"
+    export start draw_pid
+}
+
+typr_main () {
 
     while true; do
         typr_draw_text
@@ -142,7 +146,8 @@ typr_main () {
                 entered_text="${entered_text%?}"
                 ;;
             *)
-                echo "$c" >> LOG
+                [ -z "$start" ] && typr_start_timer
+
                 entered_text="$entered_text$c"
                 ;;
         esac
