@@ -57,10 +57,13 @@ typr_draw_text () {
 
         [ ! "$ce" ] && newcolor="[0;37m" \
 
-        [ "$i" -gt "$startcol" ] && [ "$lt" = " " ] && {
-            line=$((line+1))
-            draw="${draw}[${line};${startcol}H"
-            i=0
+        [ "$lt" = " " ] && {
+            next_word=${t%% *}
+                    [ "$i" -gt "$((startcol - ${#next_word}))" ]  && {
+                line=$((line+1))
+                draw="${draw}[${line};${startcol}H"
+                i=0
+            }
         }
 
         [ "$color" != "$newcolor" ] && {
