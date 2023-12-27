@@ -73,7 +73,10 @@ typr_draw_text () {
             i=0
         }
 
-        printf "$ct"
+        [ "$ct" = " " ] && [ "$color" = "[0;31m" ] \
+         && printf "_" \
+         || printf "$ct"
+
         i=$((i+1))
     done
     printf "[${cpos}H"
