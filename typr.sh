@@ -1,6 +1,7 @@
 #!/bin/sh
 
 words="the be of and a to in he have it that for they i with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line"
+alphanum="A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|0|1|2|3|4|5|6|7|8|9|,|.|?|\"|'|!|-"
 
 entered_text=""
 text=""
@@ -70,9 +71,11 @@ typr_draw_text () {
         }
 
 
-        [ "$ct" = " " ] && [ "$color" = "[0;31m" ] \
-         && draw="${draw}_" \
-         || draw="$draw$ct"
+        [ "$color" = "[0;31m" ] &&{
+            [ "$ce" = " " ] && draw="${draw}_" || draw="${draw}$ce"
+        } || {
+         draw="$draw$ct"
+        }
 
         i=$((i+1))
     done
@@ -105,7 +108,7 @@ typr_show_results () {
     words="$(set -- $text ; printf "%s" "$#")"
     wpm="$((time_ns*words/60000000000))"
     acc="100%"
-    
+
     printf "[%s;${areax}H%s" \
         "${areay}" "[0;37mwpm" \
         "$((areay+1))" "[0m$wpm" \
@@ -145,7 +148,7 @@ typr_main () {
             '')
                 entered_text="${entered_text%?}"
                 ;;
-            *)
+                " "|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|0|1|2|3|4|5|6|7|8|9|,|.|\?|\"|\'|!|-)
                 [ -z "$start" ] && typr_start_timer
 
                 entered_text="$entered_text$c"
