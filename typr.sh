@@ -104,7 +104,13 @@ typr_show_results () {
     wpm="$((time_ns*words/60000000000))"
     acc="100%"
     
-    printf "[%s;${areax}H%s" "${areay}" "[0;37mwpm" "$((areay+1))" "[0m$wpm" "$((areay+2))" "[0;37macc" "$((areay+3))" 
+    printf "[%s;${areax}H%s" \
+        "${areay}" "[0;37mwpm" \
+        "$((areay+1))" "[0m$wpm" \
+        "$((areay+2))" "[0;37macc" \
+        "$((areay+3))" "[0m$acc" \
+        "$((areay+4))" "[0;37mtime" \
+        "$((areay+5))" "[0m$(typr_get_time)"
 }
 
 typr_generate_text () {
