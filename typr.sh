@@ -29,20 +29,12 @@ tty_readc () {
 }
 
 typr_draw_text () {
-
-    cols="$(tput cols)"
-    lines="$(tput lines)"
-
-    startcol=$((cols / 3))
-    line=$((lines / 3))
-    cpos="0;0"
-
     color="[0;37m"
-
-    tput civis
+    line=${areay}
+    startcol=${areax}
 
     cpos="${line};${startcol}"
-    printf "[${cpos}H${color}"
+    draw="[${cpos}H${color}"
 
     i=0
     t="$text"
@@ -62,25 +54,55 @@ typr_draw_text () {
 
         [ "$color" != "$newcolor" ] && {
             color="$newcolor"
-            printf "$newcolor"
+            draw="${draw}$newcolor"
             [ "$color" = "[0;37m" ] && cpos="${line};$((i+$startcol))"
         }
 
 
         [ "$i" -gt "$startcol" ] && {
             line=$((line+1))
-            printf "[${line};${startcol}H"
+            draw="${draw}[${line};${startcol}H"
             i=0
         }
 
         [ "$ct" = " " ] && [ "$color" = "[0;31m" ] \
-         && printf "_" \
-         || printf "$ct"
+         && draw="${draw}_" \
+         || draw="$draw$ct"
 
         i=$((i+1))
     done
-    printf "[${cpos}H"
+    printf "%s[${cpos}H" "$draw"
     tput cnorm
+}
+
+typr_get_time () {
+    now="$(date +%s%N)"
+    time_ns=$((now-start))
+
+    time_ms=$(((time_ns/1000000)%1000))
+    time_seconds=$(((time_ns/1000000000)%60))
+    time_minutes=$((time_ns/60000000000))
+    
+    printf "%02d:%02d.%03d" "$time_minutes" "$time_seconds" "$time_ms"
+}
+
+typr_draw_time () {
+    printf "[s[$((areay-1));${areax}H[0m%s[u" "$(typr_get_time)"
+}
+
+typr_show_results () {
+    now="$(date +%s%N)"
+    time_ns=$((now-start))
+
+    time_ms=$(((time_ns/1000000)%1000))
+    time_seconds=$(((time_ns/1000000000)%60))
+    time_minutes=$((time_ns/60000000000))
+
+    words=$(set -- $text; printf "%s\n" "$#")
+    wpm="$((time_ns*words/60000000000))"
+    
+    printf "[$((areay-1));${areax}H[0mtime: %02d:%02d.%03d\twpm: %s" "$time_minutes" "$time_seconds" "$time_ms" "$wpm"
+    
 }
 
 typr_generate_text () {
@@ -100,7 +122,19 @@ typr_generate_text () {
 }
 
 
+typr_draw_loop () {
+    while true; do
+        typr_draw_time
+    done
+}
+
+
 typr_main () {
+    start="$(date +%s%N)"
+
+    typr_draw_loop &
+    draw_pid="$!"
+
     while true; do
         typr_draw_text
         c="$(tty_readc)"
@@ -113,12 +147,25 @@ typr_main () {
                 echo "$c" >> LOG
                 entered_text="$entered_text$c"
                 ;;
+        esac
 
+        [ "${#entered_text}" = "${#text}" ] && break
+    done
+    kill "$draw_pid"
+
+    while true; do
+        case "$(tty_readc)" in
+            ''|'') break;;
         esac
     done
 }
 
 typr_init () {
+    cols="$(tput cols)"
+    lines="$(tput lines)"
+
+    areax=$((cols / 3))
+    areay=$((lines / 3))
     tty_init
     typr_generate_text
     typr_main
