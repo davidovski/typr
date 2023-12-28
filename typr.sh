@@ -57,9 +57,14 @@ typr_draw_time () {
     [ ! -z "$start" ] && printf "[s[$((areay-1));${areax}H[0m%s[u" "$(typr_get_time)"
 }
 
-typr_calculate_wpm () {
+typr_calculate_raw_wpm () {
     printf "%s" "$((${#entered_text}*60000000000/(time_ns*5)))"
 }
+
+typr_calculate_acc () {
+    [ "$total_kp" != "0" ] && printf "%s" "$(((100*correct_kp)/total_kp))" || printf "%s" "0"
+}
+
 
 typr_show_results () {
     printf "[2J[?25l"
@@ -68,18 +73,19 @@ typr_show_results () {
     time_ns=$((now-start))
 
     words="$(set -- $text ; printf "%s" "$#")"
-    wpm="$(typr_calculate_wpm)"
+    raw_wpm="$(typr_calculate_raw_wpm)"
     acc="$(typr_calculate_acc)"
+    wpm="$(((acc*raw_wpm) / 100))"
 
     printf "[%s;${areax}H%s" \
         "${areay}" "[0;37mwpm" \
         "$((areay+1))" "[0m$wpm" \
         "$((areay+2))" "[0;37macc" \
-        "$((areay+3))" "[0m$acc" \
+        "$((areay+3))" "[0m${acc}%" \
         "$((areay+4))" "[0;37mtime" \
         "$((areay+5))" "[0m$(typr_get_time)" \
-        "$((areay+6))" "[0;37mwords" \
-        "$((areay+7))" "[0m$words"
+        "$((areay+6))" "[0;37mraw" \
+        "$((areay+7))" "[0m$raw_wpm"
 }
 
 typr_wrap_text () {
@@ -103,7 +109,7 @@ typr_wrap_text () {
 }
 
 typr_generate_text () {
-    wordcount=50
+    wordcount=100
     text="$(printf "%s " $(printf "%s\n" $words | shuf -r -n $wordcount))"
     text="${text% }"
     text="$(typr_wrap_text)"
@@ -122,25 +128,19 @@ typr_start_timer () {
     export start draw_pid
 }
 
-typr_calculate_acc () {
-    [ "$total_kp" != "0" ] && printf "%s%%" "$(((100*correct_kp)/total_kp))" || printf "%s" "0%"
-}
-
 typr_update_acc () {
-    c=$1
-    total_kp=$((total_kp+1))
-
-    i=0
     t="$current_line"
-    while [ "$i" -lt "$((${#entered_line}-1))" ]; do
-        i=$((i+1))
-        t="${t#?}" # remove first letter
-    done
-    correct_c=${t%${t#?}}
+    e="$entered_line"
+    while [ "$e" ] ; do
+        ct="${t%${t#?}}"
+        t="${t#?}"
 
-    [ "$c" = "$correct_c" ] && {
-        correct_kp=$((correct_kp+1)) 
-}
+        ce="${e%${e#?}}"
+        e="${e#?}"
+
+        [ "$ct" = "$ce" ] && correct_kp=$((correct_kp+1))
+        total_kp=$((total_kp+1)) 
+    done
     export correct_kp total_kp
 }
 
@@ -188,6 +188,18 @@ typr_redraw_line () {
     printf "%s[${line};$((${#entered_line} + startcol))H[?25h" "$draw"
 }
 
+typr_new_line () {
+        [ ! -z  "$entered_text" ] && entered_text="$entered_text"$'\n'
+        entered_text="${entered_text}${entered_line}"
+        typr_update_acc
+
+        entered_line=""
+
+        current_line_no=$((current_line_no+1))
+        current_line="$(typr_get_text_line $current_line_no)"
+        typr_redraw_line
+}
+
 typr_add_letter () {
     c="$1"
     [ -z "$start" ] && typr_start_timer
@@ -197,16 +209,9 @@ typr_add_letter () {
     typr_redraw_line
 
     [ "${#entered_line}" = "${#current_line}" ] && {
-        [ ! -z  "$entered_text" ] && entered_text="$entered_text"$'\n'
-        entered_text="${entered_text}${entered_line}"
-        entered_line=""
-
-        current_line_no=$((current_line_no+1))
-        current_line="$(typr_get_text_line $current_line_no)"
-        typr_redraw_line
+        typr_new_line
     }
 
-    typr_update_acc "$c"
 }
 
 typr_del_letter () {
@@ -276,9 +281,8 @@ typr_main () {
     done
     kill "$draw_pid"
 
-    [ ! -z  "$entered_text" ] && entered_text="$entered_text"$'\n'
-    entered_text="${entered_text}${entered_line}"
-
+    entered_line="$entered_line "
+    typr_new_line
     typr_show_results
 
     while true; do
