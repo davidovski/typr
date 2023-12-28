@@ -131,14 +131,16 @@ typr_update_acc () {
     total_kp=$((total_kp+1))
 
     i=0
-    t="$text"
-    while [ "$i" -lt "$((${#entered_text}-1))" ]; do
+    t="$current_line"
+    while [ "$i" -lt "$((${#entered_line}-1))" ]; do
         i=$((i+1))
         t="${t#?}" # remove first letter
     done
     correct_c=${t%${t#?}}
 
-    [ "$c" = "$correct_c" ] && correct_kp=$((correct_kp+1))
+    [ "$c" = "$correct_c" ] && {
+        correct_kp=$((correct_kp+1)) 
+}
     export correct_kp total_kp
 }
 
@@ -258,17 +260,9 @@ typr_main () {
     current_line="$(typr_get_text_line $current_line_no)"
 
     typr_draw_text
-    #fstart=$(date +%s%N)
     while true; do
 
-        # calculate performance
-        #fend=$(date +%s%N)
-        #
-        #msperframe=$(((fend-fstart)/1000000))
-        #printf "[0;0H%6s" "$msperframe"
-
         c="$(tty_readc)"
-        #fstart=$(date +%s%N)
         case "$c" in
             ''|'') break;;
             '')
