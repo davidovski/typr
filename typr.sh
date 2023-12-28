@@ -62,6 +62,10 @@ typr_draw_time () {
     case "$test_type" in
         "time")
             time_ns=$((1000000000*$test_length - $time_ns))
+            [ "$time_ns" -lt "0" ] && {
+                [ "$(((time_ns / 500000000) % 2))" = "0" ] && printf "[s[$((areay - 1));${areax}H[0m%s[u" "         " && return 1
+                time_ns=0
+            }
             ;;
     esac
 
