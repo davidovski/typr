@@ -4,6 +4,9 @@ words="the be of and a to in he have it that for they i with as not on she at by
 
 text=""
 
+test_type="time"
+test_length="30"
+
 tty_init () {
     printf "[2J"
     export SAVED_TTY_SETTINGS=$(stty -g)
@@ -42,8 +45,7 @@ typr_draw_text () {
 }
 
 typr_get_time () {
-    now="$(date +%s%N)"
-    time_ns=$((now-start))
+    time_ns="$1"
 
     time_ms=$(((time_ns/1000000)%1000))
     time_seconds=$(((time_ns/1000000000)%60))
@@ -53,7 +55,18 @@ typr_get_time () {
 }
 
 typr_draw_time () {
-    [ ! -z "$start" ] && printf "[s[$((areay-1));${areax}H[0m%s[u" "$(typr_get_time)"
+    [ -z "$start" ] && return 1
+
+    now="$(date +%s%N)"
+    time_ns=$((now-start))
+    case "$test_type" in
+        "time")
+            time_ns=$((1000000000*$test_length - $time_ns))
+            ;;
+    esac
+
+    draw_time="$(typr_get_time "$time_ns")"
+    printf "[s[$((areay - 1));${areax}H[0m%s[u" "$draw_time"
 }
 
 typr_calculate_raw_wpm () {
@@ -82,7 +95,7 @@ typr_show_results () {
         "$((areay+2))" "[0;37macc" \
         "$((areay+3))" "[0m${acc}%" \
         "$((areay+4))" "[0;37mtime" \
-        "$((areay+5))" "[0m$(typr_get_time)" \
+        "$((areay+5))" "[0m$(typr_get_time "$time_ns")" \
         "$((areay+6))" "[0;37mraw" \
         "$((areay+7))" "[0m$raw_wpm"
 }
@@ -108,7 +121,16 @@ typr_wrap_text () {
 }
 
 typr_generate_text () {
-    wordcount=100
+    case "$test_type" in
+        "words")
+            wordcount="$test_length"
+            ;;
+        "time")
+            # TODO auto add lines as test progresses
+            wordcount="100"
+            ;;
+    esac
+
     text="$(printf "%s " $(printf "%s\n" $words | shuf -r -n $wordcount))"
     text="${text% }"
     text="$(typr_wrap_text)"
@@ -287,7 +309,17 @@ typr_main () {
                 return
                 ;;
         esac
-        [ "$((${#entered_text}+${#entered_line}+2))" = "${#text}" ] && break
+
+        case "$test_type" in
+            "words")
+                [ "$((${#entered_text}+${#entered_line}+2))" = "${#text}" ] && break
+                ;;
+            "time")
+                now="$(date +%s%N)"
+                time_ns=$((now-start))
+                [ "$time_ns" -gt "$((test_length*1000000000))" ] && break
+                ;;
+        esac
     done
     kill "$draw_pid"
 
