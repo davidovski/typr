@@ -2,7 +2,6 @@
 
 words="the be of and a to in he have it that for they i with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line"
 
-entered_text=""
 text=""
 
 tty_init () {
@@ -72,7 +71,7 @@ typr_show_results () {
     now="$(date +%s%N)"
     time_ns=$((now-start))
 
-    words="$(set -- $text ; printf "%s" "$#")"
+    wc="$(set -- $text ; printf "%s" "$#")"
     raw_wpm="$(typr_calculate_raw_wpm)"
     acc="$(typr_calculate_acc)"
     wpm="$(((acc*raw_wpm) / 100))"
@@ -257,6 +256,10 @@ typr_get_text_line() {
 }
 
 typr_main () {
+    entered_text=""
+    entered_line=""
+    start=
+
     total_kp=0
     correct_kp=0
     export correct_kp total_kp
@@ -264,6 +267,7 @@ typr_main () {
     current_line_no=1
     current_line="$(typr_get_text_line $current_line_no)"
 
+    printf "[2J"
     typr_draw_text
     while true; do
 
@@ -275,6 +279,12 @@ typr_main () {
                 ;;
                 " "|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|0|1|2|3|4|5|6|7|8|9|,|.|\?|\"|\'|!|-)
                     typr_add_letter "$c"
+                ;;
+            '	')
+                kill "$draw_pid"
+                typr_generate_text
+                typr_main
+                return
                 ;;
         esac
         [ "$((${#entered_text}+${#entered_line}+2))" = "${#text}" ] && break
@@ -288,6 +298,11 @@ typr_main () {
     while true; do
         case "$(tty_readc)" in
             ''|''|q) break;;
+            '	') 
+                typr_generate_text
+                typr_main
+                return
+                ;;
         esac
     done
 }
@@ -299,8 +314,8 @@ typr_init () {
 
     areax=$((cols / 3))
     areay=$((lines / 3))
-    typr_generate_text
     tty_init
+    typr_generate_text
     typr_main
     tty_cleanup
 }
