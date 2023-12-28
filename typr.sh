@@ -30,62 +30,16 @@ tty_readc () {
 }
 
 typr_draw_text () {
-    color="[0;37m"
-    line=${areay}
+    y="${areay}"
     startcol=${areax}
 
-    cpos="${line};${startcol}"
-    draw="[${cpos}H${color}"
-
-    i=0
-    t="$text"
-    e="$entered_text"
-    lt=""
-    while [ "$t" ] ; do
-        lt="$ct"
-        ct="${t%${t#?}}"
-        t="${t#?}"
-
-        ce="${e%${e#?}}"
-        e="${e#?}"
-
-        case "$ce" in
-            "$ct")
-                newcolor="[0;32m"
-                ;;
-            "")
-                newcolor="[0;37m"
-                ;;
-            *)
-                newcolor="[0;31m"
-            ;;
-        esac
-
-        [ "$lt" = " " ] && {
-            next_word=${t%% *}
-                    [ "$i" -gt "$((startcol - ${#next_word}))" ]  && {
-                line=$((line+1))
-                draw="${draw}[${line};${startcol}H"
-                i=0
-            }
-        }
-
-        [ "$color" != "$newcolor" ] && {
-            color="$newcolor"
-            draw="${draw}$newcolor"
-            [ "$color" = "[0;37m" ] && cpos="${line};$((i+$startcol))"
-        }
-
-
-        [ "$color" = "[0;31m" ] && {
-            [ "$ce" = " " ] && draw="${draw}_" || draw="${draw}$ce"
-        } || {
-            draw="$draw$ct"
-        }
-
-        i=$((i+1))
+    printf "[?25l"
+    printf "%s\n" "$text" | while IFS= read -r line; do
+        printf "%s" "[${y};${startcol}H[0;37m${line}"
+        y=$((y+1))
     done
-    printf "%s[${cpos}H[?25h" "$draw"
+    printf "[${areay};${startcol}H[?25h"
+
 }
 
 typr_get_time () {
@@ -128,12 +82,32 @@ typr_show_results () {
         "$((areay+7))" "[0m$words"
 }
 
-typr_generate_text () {
-    wordcount=100
-    text="$(printf "%s " $(printf "%s\n" $words | shuf -r -n $wordcount))"
-    text="${text% }"
+typr_wrap_text () {
+    t="$text"
+    line=""
+    lt=""
+    while [ "$t" ] ; do
+        lt="$ct"
+        ct="${t%${t#?}}"
+        t="${t#?}"
+
+        [ "$lt" = " " ] && {
+            next_word=${t%% *}
+            [ "${#line}" -gt "$((areax - ${#next_word}))" ] && {
+                printf "%s\n" "${line}"
+                line=""
+            }
+        }
+        line="${line}${ct}"
+    done
 }
 
+typr_generate_text () {
+    wordcount=50
+    text="$(printf "%s " $(printf "%s\n" $words | shuf -r -n $wordcount))"
+    text="${text% }"
+    text="$(typr_wrap_text)"
+}
 
 typr_draw_loop () {
     while true; do
@@ -168,17 +142,128 @@ typr_update_acc () {
     export correct_kp total_kp
 }
 
+typr_redraw_line () {
+    color="[0;37m"
+    line=$((areay + current_line_no - 1))
+    startcol=${areax}
+
+    draw="[${line};${startcol}H${color}"
+
+    i=0
+    t="$current_line"
+    e="$entered_line"
+    while [ "$t" ] ; do
+        ct="${t%${t#?}}"
+        t="${t#?}"
+
+        ce="${e%${e#?}}"
+        e="${e#?}"
+
+        case "$ce" in
+            "$ct")
+                newcolor="[0;32m"
+                ;;
+            "")
+                newcolor="[0;37m"
+                ;;
+            *)
+                newcolor="[0;31m"
+            ;;
+        esac
+
+        [ "$color" != "$newcolor" ] && {
+            color="$newcolor"
+            draw="${draw}$newcolor"
+        }
+
+
+        [ "$color" = "[0;31m" ] && {
+            [ "$ce" = " " ] && draw="${draw}_" || draw="${draw}$ce"
+        } || {
+            draw="$draw$ct"
+        }
+    done
+    printf "%s[${line};$((${#entered_line} + startcol))H[?25h" "$draw"
+}
+
+typr_add_letter () {
+    c="$1"
+    [ -z "$start" ] && typr_start_timer
+
+    entered_line="$entered_line$c"
+
+    typr_redraw_line
+
+    [ "${#entered_line}" = "${#current_line}" ] && {
+        [ ! -z  "$entered_text" ] && entered_text="$entered_text"$'\n'
+        entered_text="${entered_text}${entered_line}"
+        entered_line=""
+
+        current_line_no=$((current_line_no+1))
+        current_line="$(typr_get_text_line $current_line_no)"
+        typr_redraw_line
+    }
+
+    typr_update_acc "$c"
+}
+
+typr_del_letter () {
+    [ -z "$entered_line" ] && prev=true || prev=false
+
+    entered_line="${entered_line%?}"
+    typr_redraw_line
+
+    $prev && [ "$current_line_no" -gt "1" ] && {
+        # move back one line in entered
+        current_line_no=$((current_line_no-1))
+        current_line="$(typr_get_text_line $current_line_no)"
+
+        entered_line="$(typr_get_text_line $current_line_no "$entered_text")"
+        entered_line="${entered_line%?}"
+        entered_text="$(typr_remove_last_line "$entered_text")"
+        typr_redraw_line
+    }
+
+}
+
+# removes the last line, ignoring trailing whitespace
+#
+typr_remove_last_line() {
+    t="${1%$'\n'}"
+    printf "%s" "${1%$'\n'}" | while IFS= read -r line; do
+        printf "%s\n" "$line"
+    done
+}
+
+typr_get_text_line() {
+    n="$1" t="${2:-$text}"
+    case "$n" in
+        ""|*[!0-9]*) return 1;;
+    esac
+
+    i=0
+
+    printf "%s\n" "$t" | while IFS= read -r line; do
+        i=$((i+1))
+        [ "$i" = "$n" ] && printf "%s\n" "$line"
+    done
+}
+
 typr_main () {
     total_kp=0
     correct_kp=0
     export correct_kp total_kp
 
+    current_line_no=1
+    current_line="$(typr_get_text_line $current_line_no)"
+
+    typr_draw_text
     #fstart=$(date +%s%N)
     while true; do
-        typr_draw_text
 
         # calculate performance
         #fend=$(date +%s%N)
+        #
         #msperframe=$(((fend-fstart)/1000000))
         #printf "[0;0H%6s" "$msperframe"
 
@@ -187,25 +272,24 @@ typr_main () {
         case "$c" in
             ''|'') break;;
             '')
-                entered_text="${entered_text%?}"
+                typr_del_letter
                 ;;
                 " "|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|0|1|2|3|4|5|6|7|8|9|,|.|\?|\"|\'|!|-)
-                [ -z "$start" ] && typr_start_timer
-
-                entered_text="$entered_text$c"
-                typr_update_acc "$c"
+                    typr_add_letter "$c"
                 ;;
         esac
-
-        [ "${#entered_text}" = "${#text}" ] && break
+        [ "$((${#entered_text}+${#entered_line}+2))" = "${#text}" ] && break
     done
     kill "$draw_pid"
+
+    [ ! -z  "$entered_text" ] && entered_text="$entered_text"$'\n'
+    entered_text="${entered_text}${entered_line}"
 
     typr_show_results
 
     while true; do
         case "$(tty_readc)" in
-            ''|'') break;;
+            ''|''|q) break;;
         esac
     done
 }
@@ -217,8 +301,8 @@ typr_init () {
 
     areax=$((cols / 3))
     areay=$((lines / 3))
-    tty_init
     typr_generate_text
+    tty_init
     typr_main
     tty_cleanup
 }
