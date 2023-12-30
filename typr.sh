@@ -7,6 +7,18 @@ text=""
 test_type="time"
 test_length="30"
 
+# test if date supports %N
+NANOSECONDS=true
+_s=
+case "$(date +%N)" in 
+    ""|"%N") NANOSECONDS=false;;
+esac
+
+gettime () {
+    $NANOSECONDS && date +%s%N \
+        || printf "%s000000000" "$(date +%s)"
+}
+
 tty_init () {
     printf "[2J"
     export SAVED_TTY_SETTINGS=$(stty -g)
@@ -58,7 +70,7 @@ typr_draw_time () {
     local now time_ms
     [ -z "$start" ] && return 1
 
-    now="$(date +%s%N)"
+    now="$(gettime)"
     time_ns=$((now-start))
     case "$test_type" in
         "time")
@@ -87,7 +99,7 @@ typr_calculate_acc () {
 typr_show_results () {
     printf "[2J[?25l"
 
-    now="$(date +%s%N)"
+    now="$(gettime)"
     time_ns=$((now-start))
 
     wc="$(set -- $text ; printf "%s" "$#")"
@@ -135,7 +147,7 @@ typr_generate_text () {
             ;;
     esac
 
-    text="$(printf "%s " $(printf "%s\n" $words | shuf -r -n $wordcount))"
+    text="$(printf "%s " $(printf "%s\n" $words | shuf -n $wordcount))"
     text="${text% }"
     text="$(typr_wrap_text)"
 }
@@ -147,7 +159,7 @@ typr_draw_loop () {
 }
 
 typr_start_timer () {
-    start="$(date +%s%N)"
+    start="$(gettime)"
     typr_draw_loop &
     draw_pid="$!"
     export start draw_pid
@@ -318,7 +330,7 @@ typr_main () {
                 [ "$((${#entered_text}+${#entered_line}+2))" = "${#text}" ] && break
                 ;;
             "time")
-                now="$(date +%s%N)"
+                now="$(gettime)"
                 time_ns=$((now-start))
                 [ "$time_ns" -gt "$((test_length*1000000000))" ] && break
                 ;;
