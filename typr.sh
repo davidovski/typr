@@ -1,4 +1,5 @@
 #!/bin/sh
+set -f
 
 words="the be of and a to in he have it that for they i with as not on she at by this we you do but from or which one would all will there say who make when can more if no man out other so what time up go about than into could state only new year some take come these know see use get like then first any work now may such give over think most even find day also after way many must look before great back through long where much should well people down own just because good each those feel seem how high too place little world very still nation hand old life tell write become here show house both between need mean call develop under last right move thing general school never same another begin while number part turn real leave might want point form off child few small since against ask late home interest large person end open public follow during present without again hold govern around possible head consider word program problem however lead system set order eye plan run keep face fact group play stand increase early course change help line"
 
@@ -34,30 +35,29 @@ tty_cleanup () {
 }
 
 tty_readc () {
-    local s
     stty -echo -icanon min 1 time 0
     s="$(dd bs=1 count=1 of=/dev/stdout 2>/dev/null)"
     stty -icanon min 0 time 0
     [ "$s" = "" ]  && {
         s="$s$(dd bs=1 count=2 of=/dev/stdout 2>/dev/null)"
     }
-    printf "$s"
+    printf "%s" "$s"
 }
 
 typr_draw_text () {
-    local y="${areay}" startcol=${areax}
+    y="${areay}" startcol=${areax}
 
     printf "[?25l"
     printf "%s\n" "$text" | while IFS= read -r line; do
         printf "%s" "[${y};${startcol}H[0;37m${line}"
         y=$((y+1))
     done
-    printf "[${areay};${startcol}H[?25h"
+    printf "[%d;%dH[?25h" "${areay}" "${startcol}"
 
 }
 
 typr_get_time () {
-    local time_ns="$1" time_ms time_seconds time_minutes
+    time_ns="$1"
 
     time_ms=$(((time_ns/1000000)%1000))
     time_seconds=$(((time_ns/1000000000)%60))
@@ -67,14 +67,13 @@ typr_get_time () {
 }
 
 typr_draw_time () {
-    local now time_ms
     [ -z "$start" ] && return 1
 
     now="$(gettime)"
     time_ns=$((now-start))
     case "$test_type" in
         "time")
-            time_ns=$((1000000000*$test_length - $time_ns))
+            time_ns=$((1000000000*test_length - time_ns))
             [ "$time_ns" -lt "0" ] && {
                 [ "$(((time_ns / 500000000) % 2))" = "0" ] \
                     && printf "[s[$((areay - 1));${areax}H[0m%s[u" "         " \
@@ -87,7 +86,7 @@ typr_draw_time () {
 }
 
 typr_calculate_raw_wpm () {
-    local time_ns="$1"
+    time_ns="$1"
     printf "%s" "$((${#entered_text}*60000000000/(time_ns*5)))"
 }
 
@@ -102,7 +101,7 @@ typr_show_results () {
     now="$(gettime)"
     time_ns=$((now-start))
 
-    wc="$(set -- $text ; printf "%s" "$#")"
+    #wc="$(set -- $text ; printf "%s" "$#")"
     raw_wpm="$(typr_calculate_raw_wpm "$time_ns")"
     acc="$(typr_calculate_acc)"
     wpm="$(((acc*raw_wpm) / 100))"
@@ -119,10 +118,10 @@ typr_show_results () {
 }
 
 typr_wrap_text () {
-    local t="$text" line="" lt=""
+    t="$text" line="" lt=""
     while [ "$t" ] ; do
         lt="$ct"
-        ct="${t%${t#?}}"
+        ct="${t%"${t#?}"}"
         t="${t#?}"
 
         [ "$lt" = " " ] && {
@@ -166,12 +165,12 @@ typr_start_timer () {
 }
 
 typr_update_acc () {
-    local t="$current_line" e="$entered_line"
+    t="$current_line" e="$entered_line"
     while [ "$e" ] ; do
-        ct="${t%${t#?}}"
+        ct="${t%"${t#?}"}"
         t="${t#?}"
 
-        ce="${e%${e#?}}"
+        ce="${e%"${e#?}"}"
         e="${e#?}"
 
         [ "$ct" = "$ce" ] && correct_kp=$((correct_kp+1))
@@ -181,8 +180,6 @@ typr_update_acc () {
 }
 
 typr_redraw_line () {
-    local color line staratcol draw i t e
-
     color="[0;37m"
     line=$((areay + current_line_no - 1))
     startcol=${areax}
@@ -193,10 +190,10 @@ typr_redraw_line () {
     t="$current_line"
     e="$entered_line"
     while [ "$t" ] ; do
-        ct="${t%${t#?}}"
+        ct="${t%"${t#?}"}"
         t="${t#?}"
 
-        ce="${e%${e#?}}"
+        ce="${e%"${e#?}"}"
         e="${e#?}"
 
         case "$ce" in
@@ -218,7 +215,7 @@ typr_redraw_line () {
 
 
         [ "$color" = "[0;31m" ] && {
-            [ "$ce" = " " ] && draw="${draw}_" || draw="${draw}$ce"
+            case "$ce" in " ") draw="${draw}_" ;; *) draw="${draw}$ce"; esac
         } || {
             draw="${draw}$ct"
         }
@@ -227,7 +224,7 @@ typr_redraw_line () {
 }
 
 typr_new_line () {
-    [ ! -z  "$entered_text" ] && entered_text="$entered_text"$'\n'
+    [ -n  "$entered_text" ] && entered_text="$entered_text"$'\n'
     entered_text="${entered_text}${entered_line}"
     typr_update_acc
 
@@ -239,7 +236,7 @@ typr_new_line () {
 }
 
 typr_add_letter () {
-    local c="$1"
+    c="$1"
     [ -z "$start" ] && typr_start_timer
 
     entered_line="$entered_line$c"
@@ -253,7 +250,6 @@ typr_add_letter () {
 }
 
 typr_del_letter () {
-    local prev
     [ -z "$entered_line" ] && prev=true || prev=false
 
     entered_line="${entered_line%?}"
@@ -274,14 +270,16 @@ typr_del_letter () {
 # removes the last line, ignoring trailing whitespace
 #
 typr_remove_last_line() {
-    local t="${1%$'\n'}"
+    t="${1%$'\n'}"
     printf "%s" "${1%$'\n'}" | while IFS= read -r line; do
         printf "%s\n" "$line"
     done
 }
 
 typr_get_text_line() {
-    local n="$1" t="${2:-$text}" i=0
+    n="$1"
+    t="${2:-$text}"
+    i=0
     case "$n" in
         ""|*[!0-9]*) return 1;;
     esac
