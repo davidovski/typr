@@ -224,7 +224,8 @@ typr_redraw_line () {
 }
 
 typr_new_line () {
-    [ -n  "$entered_text" ] && entered_text="$entered_text"$'\n'
+    [ -n  "$entered_text" ] && entered_text="$entered_text
+"
     entered_text="${entered_text}${entered_line}"
     typr_update_acc
 
@@ -270,8 +271,10 @@ typr_del_letter () {
 # removes the last line, ignoring trailing whitespace
 #
 typr_remove_last_line() {
-    t="${1%$'\n'}"
-    printf "%s" "${1%$'\n'}" | while IFS= read -r line; do
+    t="${1%
+}"
+    printf "%s" "${1%
+}" | while IFS= read -r line; do
         printf "%s\n" "$line"
     done
 }
