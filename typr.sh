@@ -17,7 +17,7 @@ esac
 
 gettime () {
     $NANOSECONDS && date +%s%N \
-        || printf "%s000000000" "$(date +%s)"
+        || printf "%s000000000" "$(date +%s)" 2>/dev/null
 }
 
 tty_init () {
@@ -74,13 +74,15 @@ typr_draw_time () {
     case "$test_type" in
         "time")
             time_ns=$((1000000000*test_length - time_ns))
-            [ "$time_ns" -lt "0" ] && {
-                [ "$(((time_ns / 500000000) % 2))" = "0" ] \
-                    && printf "[s[$((areay - 1));${areax}H[0m%s[u" "         " \
-                    && return 1
-                time_ns=0
-            };;
+            ;;
     esac
+
+    [ "$time_ns" -lt "0" ] && {
+        [ "$(((time_ns / 500000000) % 2))" = "0" ] \
+            && printf "[s[$((areay - 1));${areax}H[0m%s[u" "         " \
+            && return 1
+        time_ns=0
+    }
 
     printf "[s[$((areay - 1));${areax}H[0m%s[u" "$(typr_get_time "$time_ns")"
 }
@@ -133,6 +135,7 @@ typr_wrap_text () {
         }
         line="${line}${ct}"
     done
+    printf "%s\n" "${line}"
 }
 
 typr_generate_text () {
@@ -148,6 +151,7 @@ typr_generate_text () {
 
     text="$(printf "%s " $(printf "%s\n" $words | shuf -n $wordcount))"
     text="${text% }"
+    printf "%s" "$text" > TEXTIS
     text="$(typr_wrap_text)"
 }
 
@@ -328,7 +332,7 @@ typr_main () {
 
         case "$test_type" in
             "words")
-                [ "$((${#entered_text}+${#entered_line}+2))" = "${#text}" ] && break
+                [ "$((${#entered_text}+${#entered_line}))" = "${#text}" ] && break
                 ;;
             "time")
                 now="$(gettime)"
@@ -346,7 +350,7 @@ typr_main () {
     while true; do
         case "$(tty_readc)" in
             ''|''|q) break;;
-            '	') 
+            '	')
                 typr_generate_text
                 typr_main
                 return
@@ -367,5 +371,29 @@ typr_init () {
     typr_main
     tty_cleanup
 }
+
+typr_usage () {
+    printf "%s\n" "$0 [-h] [-m time|words] [-d duration/words]" 1>&2
+    exit 1
+}
+
+
+while getopts "m:d:h" opt; do
+    case "$opt" in
+        h)
+            typr_usage ;;
+        m)
+            case "$OPTARG" in
+                "time"|"words") test_type="$OPTARG" ;;
+                *) typr_usage ;;
+            esac
+        ;;
+        d)
+            test_length="$OPTARG"
+        ;;
+    esac
+done
+
+shift $((OPTIND-1))
 
 typr_init
