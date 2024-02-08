@@ -151,7 +151,6 @@ typr_generate_text () {
 
     text="$(printf "%s " $(printf "%s\n" $words | shuf -n $wordcount))"
     text="${text% }"
-    printf "%s" "$text" > TEXTIS
     text="$(typr_wrap_text)"
 }
 
@@ -178,7 +177,7 @@ typr_update_acc () {
         e="${e#?}"
 
         [ "$ct" = "$ce" ] && correct_kp=$((correct_kp+1))
-        total_kp=$((total_kp+1)) 
+        total_kp=$((total_kp+1))
     done
     export correct_kp total_kp
 }
