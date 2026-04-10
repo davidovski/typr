@@ -1,4 +1,3 @@
-# typr
 # typr.sh
 
 `typr.sh` is a typing test for your terminal
